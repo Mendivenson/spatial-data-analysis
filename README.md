@@ -12,7 +12,7 @@ Este espacio esta dedicado al desarrollo de la tematica de la asignatura de Esta
 
 ## DEFINICIÓN DEL PROYECTO
 
-<h3 align="center">ANÁLISIS Y MODELADO ESPACIAL DE LA TEMPERATURA EN LA REGION DE PUEBLA - MÉXICO</h3>
+<h3 align="center">ANÁLISIS Y MODELADO ESPACIAL DE LA TEMPERATURA MAXIMA Y EL NIVEL DE HUMEDAD EN LA REGION DE PUEBLA - MÉXICO</h3>
 
 <p><strong>Objetivo General: </strong> DEFINIR LUEGO </p>
 

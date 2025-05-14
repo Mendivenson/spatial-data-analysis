@@ -1,3 +1,15 @@
+# En este script se utiliza la información recopilada sobre las diferentes estaciones a lo largo de todo México para obtener
+# información sobre las mediciones realizadas de distintas variables climáticas. Además de esto, se obtienen las coordenadas 
+# cartesianas pertinentes para poder realizar un análisis espacial y se guarda toda la información para análisis posteriores.
+
+# SALIDAS:
+#  - info.txt: Información de las mediciones para las estaciones de México con registros en el día 01-Feb-2025 
+#  - mexico.jpg: Mapa de ubicación de todas las estaciones metereológicas y sus estados.
+#  - metropolitana.jpg: Mapa de ubicación de las estaciones del área de la zona metropolitana del valle de México.
+#  - 01Feb2025.jpg: Mapa de ubicación de las estaciones con registros el día 01Feb2025 para la zona metropolitana del
+#                   valle de México. 
+
+
 wd = '~/Documents/2) EP - Estadística Espacial/Proyecto/CONAGUAS/'
 setwd(wd)
 

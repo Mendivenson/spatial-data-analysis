@@ -10,7 +10,9 @@
 #                   valle de México. 
 
 
-wd = '~/Documents/2) EP - Estadística Espacial/Proyecto/CONAGUAS/'
+# wd = '~/Documents/2) EP - Estadística Espacial/Proyecto/CONAGUAS/' # Cumpu Campero
+# wd = 'REPOS GIT/spatial-data-analysis/'   # Cumpu Costeño
+ 
 setwd(wd)
 
 library(dplyr)
@@ -20,6 +22,7 @@ library(ggplot2)
 library(ggspatial)
 library(rnaturalearth)
 library(rnaturalearthdata)
+library(prettymapr)
 
 # Identificación única de las estaciones en México
 estaciones = read.table('data/estaciones.txt')

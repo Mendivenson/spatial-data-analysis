@@ -1,4 +1,4 @@
-# En este script se realiza la operación de obtención y organización de los datos como objetos del paquete geoR (geodata)
+# En este script se realiza la operación de obtención y organización de los datos como tablas 
 # para su posterior análisis de tendencia y modelación. En ese sentido, se escogerán los estados de la península de Yucatán
 # en México (Yucatán, Quintana Roo y Campeche) debido a su superficie regular y sus condiciones climáticas más o menos 
 # regulares y además se intentarán estudiar las variables de temperatura máxima, temperatura mínima, evaporación y

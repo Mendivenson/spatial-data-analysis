@@ -1,4 +1,4 @@
-# Los datos son recolectados con corte a la información recolectada hasta Marzo de 2025
+# Los datos son recolectados con corte a la información disponible en Mayo de 2025. 
 
 library(rvest)
 library(dplyr)
@@ -46,6 +46,8 @@ for (i in 1:nrow(estaciones)){
 }
 close(pb)
 
+# Las coordenadas geográficas se encuentran guardas con sus respectivas unidades (Grados o msnm) por lo que en un principio
+# no pueden convertirse en ningún dato de tipo numérico.
 
 altitud = unlist(strsplit(estaciones$altitud, ' '))
 altitud = altitud[altitud != '']

@@ -6,6 +6,7 @@
 
 library(geoR)
 library(sf)
+library(dplyr)
 
 mensual = read.table('data/mensual (2024-2025).txt')
 mensual = mensual |> filter(AÑO == 2024, MES == 'JUN')                         # Observaciones de las variables
@@ -153,7 +154,7 @@ for (i in 4:7){
 variog_emp = as.list(rep(NA,4))
 names(variog_emp) = colnames(mensual)[4:7]
 for (i in 1:4){
-  variog_emp[[i]] = variog(geoData[[i]])
+  variog_emp[[i]] = variog(geoData[[i]], pairs.min = 30)
 }
 
 # jpeg('plots/Análisis descriptivo/Variograma empírico.jpg', width = 1000, height = 900, quality = 80, res = 100)

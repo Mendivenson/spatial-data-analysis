@@ -154,7 +154,7 @@ for (i in 4:7){
 variog_emp = as.list(rep(NA,4))
 names(variog_emp) = colnames(mensual)[4:7]
 for (i in 1:4){
-  variog_emp[[i]] = variog(geoData[[i]], pairs.min = 30)
+  variog_emp[[i]] = variog(geoData[[i]], pairs.min = 10)
 }
 
 # jpeg('plots/Análisis descriptivo/Variograma empírico.jpg', width = 1000, height = 900, quality = 80, res = 100)

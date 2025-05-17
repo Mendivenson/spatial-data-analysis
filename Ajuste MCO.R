@@ -180,6 +180,8 @@ variofit(variog_emp$LLUVIA.TOTAL.MENSUAL, ini.cov.pars = c(25800, 118513), cov.m
 # ===> AJUSTE DE MODELOS: Posterior al ajuste de parámetros iniciales por medio de eyefit, se realiza ajuste de modelos con
 #      la función creada para algunos modelos seleccionados. 
 
+
+# --- AJUSTE LLUVIA TOTAL MENSUALDE
 lluvia = as.data.frame(rbind(c('exponencial', 'exponential',20000, 67000, 15000, 1), 
                              c('seno_cardinal', 'wave', 19000, 50000, 15000, 1), 
                              c('mattern', 'matern', 20000, 55000, 15000, 2),
@@ -235,7 +237,7 @@ colnames(estimaciones) = stringr::str_to_title(lluvia$call)
 
 # jpeg('plots/ajuste/Lluvia (MCO).jpg', width = 1500, height = 1300, quality = 80, res = 150)
 plot(variog_emp$LLUVIA.TOTAL.MENSUAL, main = 'Lluvia total mensual\nen la península de Yucatán', 
-     pch = 16, type = 'n', ylab = 'Sdemivarianza', xlab = 'Distancia', cex.main = 1.5)
+     pch = 16, type = 'n', ylab = 'Semivarianza', xlab = 'Distancia', cex.main = 1.5)
 colores = RColorBrewer::brewer.pal(n = 4, name = 'Set1')
 for (i in 1:4){
   lines(x = h, y = estimaciones[,i], col = colores[i], lty = 'solid', lwd = 1.5)
@@ -246,14 +248,71 @@ legend('bottomright', legend = colnames(estimaciones), bty = 'n', lty = 'solid',
 
 write.table(x = resultados, file = 'data/ajuste/lluvia (MCO).txt')
 
-# exponencial: Silla = 28580, Rango = 67721, Hueco = 15000, 
-# seno_cardinal: Silla = 19053, Rango = 35000, Hueco = 15000
-# mattern: Silla = 20000, Rango = 55000, Hueco = 15000, kappa = 2
-# gauss: Silla = 30000, Rango = 169000, Hueco = 15000
 
-# evaporacion = 
+# --- AJUSTE EVAPORACIÓN MENSUAL
 
-# exponencial: Silla = 3800, Rango = 250000, Hueco = 800 
-# Esferico: Silla = 4000, Rango = 508000, Hueco = 800
-# exponencial modificado: Silla = 3200,Rango = 220000,kappa = 2, Hueco = 800
-# gauss: Silla = 3868, Rango = 27800, Huezo = 800 
+evap = as.data.frame(rbind(c('exponencial', 'exponential',3800, 250000, 800, 1), 
+                           c('esferico', 'spherical', 4000, 508000, 800, 1), 
+                           c('mattern', 'matern', 3850, 27800, 800, 1),
+                           c('gauss', 'gaussian', 4000, 250000, 800, 0.5)))
+colnames(evap) = c('modelo', 'call', 'silla', 'rango', 'pepita', 'kappa') 
+evap = evap |> 
+  mutate(silla = as.double(silla),  
+         rango = as.double(rango), 
+         pepita = as.double(pepita), 
+         kappa = as.double(kappa))
+ajuste_evap = as.list(rep(NA, 4))
+names(ajuste_evap) = evap[,1]
+
+resultados = c()
+for (i in 1:4){
+  modelo = evap$modelo[i]
+  silla = evap$silla[i]
+  rango = evap$rango[i]
+  pepita = evap$pepita[i]
+  kappa = evap$kappa[i]
+  
+  ajuste_evap[[i]] = estimar_mco(obj = variog_emp$EVAPORACIÓN.MENSUAL, silla_init = silla, rango_init = rango, 
+                                 modelo = modelo, nugget = pepita, kappa = kappa, pond = 'cressie')
+  
+  resultados = rbind(resultados,
+                     c(pepita, ifelse(modelo == 'mattern', kappa, NA), 
+                       ajuste_evap[[i]]$sill, ajuste_evap[[i]]$range, 
+                       ajuste_evap[[i]]$value))
+}
+
+rownames(resultados) = evap$call; colnames(resultados) = c('nugget', 'kappa', 'silla', 'rango', 'Valor mínimo')
+ajuste_evap = unlist(lapply(ajuste_evap, FUN = function(x) x[1:2]))
+names(ajuste_evap) = NULL
+ajuste_evap = matrix(ajuste_evap, ncol = 2, byrow = T)
+evap = cbind(evap, ajuste_evap)
+colnames(evap)[7:8] = c('silla_est', 'rango_est')
+
+
+h = 1:6000 * 100
+estimaciones = c()
+for (i in 1:4){
+  estimaciones = cbind(estimaciones, 
+                       variog_est(list(u = h, v = h, n = 1), 
+                                  silla_init = evap$silla_est[i],
+                                  rango_init = evap$rango_est[i],
+                                  modelo = evap$modelo[i],
+                                  nugget = evap$pepita[i], 
+                                  kappa1 = evap$kappa[i])[,'var'])
+}
+estimaciones = as.data.frame(estimaciones)
+colnames(estimaciones) = stringr::str_to_title(evap$call)
+
+
+# jpeg('plots/ajuste/evap (MCO).jpg', width = 1500, height = 1300, quality = 80, res = 150)
+plot(variog_emp$EVAPORACIÓN.MENSUAL, main = 'evap total mensual\nen la península de Yucatán', 
+     pch = 16, type = 'n', ylab = 'Semivarianza', xlab = 'Distancia', cex.main = 1.5)
+colores = RColorBrewer::brewer.pal(n = 4, name = 'Set1')
+for (i in 1:4){
+  lines(x = h, y = estimaciones[,i], col = colores[i], lty = 'solid', lwd = 1.5)
+}
+points(x = variog_emp$EVAPORACIÓN.MENSUAL$u, y = variog_emp$EVAPORACIÓN.MENSUAL$v, pch = 21, col = 'black', bg = 'white')
+legend('bottomright', legend = colnames(estimaciones), bty = 'n', lty = 'solid', col = colores, lwd = 2, inset = c(0.01,0.01))
+# dev.off()
+
+write.table(x = resultados, file = 'data/ajuste/evaporación (MCO).txt')

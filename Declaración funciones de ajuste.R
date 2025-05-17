@@ -6,6 +6,7 @@
 # utilizando, por ejemplo, eyefit.
 
 library(geoR) 
+library(dplyr)
 
 wd = '~/Documents/2) EP - Estadística Espacial/Proyecto/CONAGUAS/'
 setwd(wd)
@@ -98,8 +99,8 @@ all.equal(variog_est(obj = variog_emp$LLUVIA.TOTAL.MENSUAL, silla_init = 25800, 
 # ===> FUNCIÓN OBJETIVO: Para poder minimizar apropiadamente y estimar el valor de los parámetros, la siguiente función calcula
 #      el valor de la suma de cuadrados ponderados (Cressi o npairs o a partir de una matriz personalizada) a partir de una 
 #      matriz de resultados proveniente de la función variog_est.  
-    
-mco = function(resultados, pond = 'cressi'){
+
+mco = function(resultados, pond = 'cressie'){
   
   var_est = resultados[,"var_est"]
   var = resultados[,"var"]
@@ -108,7 +109,7 @@ mco = function(resultados, pond = 'cressi'){
   # Cálculo de la métrica de ajuste
   if(is.character(pond)) {
     switch(pond,
-           cressi = {
+           cressie = {
              sum(n * ((var_est / var) - 1) ^ 2)
            },
            size = {
@@ -130,7 +131,7 @@ mco = function(resultados, pond = 'cressi'){
 #      utilizan) son fijos.
 
 estimar_mco <- function(obj, silla_init = 1000, rango_init = 1000, modelo = 'gauss', 
-                        nugget = 0, pond = 'cressi', metodo = "L-BFGS-B") {
+                        nugget = 0, kappa = 1, pond = 'cressie', metodo = "L-BFGS-B") {
   
   # Unión de als funciones a optiimizar.
   fn_optim <- function(params) {
@@ -138,7 +139,8 @@ estimar_mco <- function(obj, silla_init = 1000, rango_init = 1000, modelo = 'gau
                              silla_init = params[1],  # sill
                              rango_init = params[2],  # range
                              modelo = modelo, 
-                             nugget = nugget)
+                             nugget = nugget, 
+                             kappa = kappa)
     
     mco(resultados, pond = pond)
   }
@@ -173,3 +175,85 @@ variofit(variog_emp$LLUVIA.TOTAL.MENSUAL, ini.cov.pars = c(25800, 118513), cov.m
 # | NOTA: Los valores estimados son iguales para diferentes modelos  |
 # | por lo que aparentemente la función de estimación está bien hecha| 
 # --------------------------------------------------------------------
+
+
+# ===> AJUSTE DE MODELOS: Posterior al ajuste de parámetros iniciales por medio de eyefit, se realiza ajuste de modelos con
+#      la función creada para algunos modelos seleccionados. 
+
+lluvia = as.data.frame(rbind(c('exponencial', 'exponential',20000, 67000, 15000, 1), 
+                             c('seno_cardinal', 'wave', 19000, 50000, 15000, 1), 
+                             c('mattern', 'matern', 20000, 55000, 15000, 2),
+                             c('gauss', 'gaussian', 30000, 169000, 15000, 1)))
+colnames(lluvia) = c('modelo', 'call', 'silla', 'rango', 'pepita', 'kappa') 
+lluvia = lluvia |> 
+  mutate(silla = as.double(silla),  
+         rango = as.double(rango), 
+         pepita = as.double(pepita), 
+         kappa = as.double(kappa))
+ajuste_lluvia = as.list(rep(NA, 4))
+names(ajuste_lluvia) = lluvia[,1]
+
+resultados = c()
+for (i in 1:4){
+  modelo = lluvia$modelo[i]
+  silla = lluvia$silla[i]
+  rango = lluvia$rango[i]
+  pepita = lluvia$pepita[i]
+  kappa = lluvia$kappa[i]
+  
+  ajuste_lluvia[[i]] = estimar_mco(obj = variog_emp$LLUVIA.TOTAL.MENSUAL, silla_init = silla, rango_init = rango, 
+                                   modelo = modelo, nugget = pepita, kappa = kappa, pond = 'cressie')
+  
+  resultados = rbind(resultados,
+                     c(pepita, ifelse(modelo == 'mattern', kappa, NA), 
+                       ajuste_lluvia[[i]]$sill, ajuste_lluvia[[i]]$range, 
+                       ajuste_lluvia[[i]]$value))
+}
+
+rownames(resultados) = lluvia$call; colnames(resultados) = c('nugget', 'kappa', 'silla', 'rango', 'Valor mínimo')
+ajuste_lluvia = unlist(lapply(ajuste_lluvia, FUN = function(x) x[1:2]))
+names(ajuste_lluvia) = NULL
+ajuste_lluvia = matrix(ajuste_lluvia, ncol = 2, byrow = T)
+lluvia = cbind(lluvia, ajuste_lluvia)
+colnames(lluvia)[7:8] = c('silla_est', 'rango_est')
+
+
+h = 1:6000 * 100
+estimaciones = c()
+for (i in 1:4){
+  estimaciones = cbind(estimaciones, 
+                       variog_est(list(u = h, v = h, n = 1), 
+                                  silla_init = lluvia$silla_est[i],
+                                  rango_init = lluvia$rango_est[i],
+                                  modelo = lluvia$modelo[i],
+                                  nugget = lluvia$pepita[i], 
+                                  kappa1 = lluvia$kappa[i])[,'var'])
+}
+estimaciones = as.data.frame(estimaciones)
+colnames(estimaciones) = stringr::str_to_title(lluvia$call)
+
+
+# jpeg('plots/ajuste/Lluvia (MCO).jpg', width = 1500, height = 1300, quality = 80, res = 150)
+plot(variog_emp$LLUVIA.TOTAL.MENSUAL, main = 'Lluvia total mensual\nen la península de Yucatán', 
+     pch = 16, type = 'n', ylab = 'Sdemivarianza', xlab = 'Distancia', cex.main = 1.5)
+colores = RColorBrewer::brewer.pal(n = 4, name = 'Set1')
+for (i in 1:4){
+  lines(x = h, y = estimaciones[,i], col = colores[i], lty = 'solid', lwd = 1.5)
+}
+points(x = variog_emp$LLUVIA.TOTAL.MENSUAL$u, y = variog_emp$LLUVIA.TOTAL.MENSUAL$v, pch = 21, col = 'black', bg = 'white')
+legend('bottomright', legend = colnames(estimaciones), bty = 'n', lty = 'solid', col = colores, lwd = 2, inset = c(0.01,0.01))
+# dev.off()
+
+write.table(x = resultados, file = 'data/ajuste/lluvia (MCO).txt')
+
+# exponencial: Silla = 28580, Rango = 67721, Hueco = 15000, 
+# seno_cardinal: Silla = 19053, Rango = 35000, Hueco = 15000
+# mattern: Silla = 20000, Rango = 55000, Hueco = 15000, kappa = 2
+# gauss: Silla = 30000, Rango = 169000, Hueco = 15000
+
+# evaporacion = 
+
+# exponencial: Silla = 3800, Rango = 250000, Hueco = 800 
+# Esferico: Silla = 4000, Rango = 508000, Hueco = 800
+# exponencial modificado: Silla = 3200,Rango = 220000,kappa = 2, Hueco = 800
+# gauss: Silla = 3868, Rango = 27800, Huezo = 800 

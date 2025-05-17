@@ -92,8 +92,9 @@ variog_est <- function(obj, silla_init = 10, rango_init = 10, modelo = 'gauss', 
 # | NOTA: Los variogramas se están calculando de forma similar pues dan lo mismo |
 # --------------------------------------------------------------------------------
 
-all.equal(variog_est(obj = variog_emp$LLUVIA.TOTAL.MENSUAL, silla_init = 25800, rango_init = 118513,modelo = 'esferico', nugget = 0)[,2], 
-          25800 - cov.spatial(obj = resultado[,"x"], cov.model = 'spherical', cov.pars = c(25800, 118513)))
+resultado = variog_est(obj = variog_emp$LLUVIA.TOTAL.MENSUAL, silla_init = 25800, rango_init = 118513,modelo = 'esferico', nugget = 0) 
+all.equal(resultado[,2], 
+          25800 - cov.spatial(obj = variog_emp$EVAPORACIÓN.MENSUAL$u, cov.model = 'spherical', cov.pars = c(25800, 118513)))
 
 
 # ===> FUNCIÓN OBJETIVO: Para poder minimizar apropiadamente y estimar el valor de los parámetros, la siguiente función calcula
@@ -133,6 +134,16 @@ mco = function(resultados, pond = 'cressie'){
 estimar_mco <- function(obj, silla_init = 1000, rango_init = 1000, modelo = 'gauss', 
                         nugget = 0, kappa = 1, pond = 'cressie', metodo = "L-BFGS-B") {
   
+  if (modelo == 'lineal'){
+    X = (obj$u - mean(obj$u))
+    beta1 = sum(X * (obj$v - mean(obj$v)))/sum(X^2) 
+    beta0 = mean(obj$v) - beta1 * mean(obj$u)
+    return(list(
+      pepita = beta0,
+      pendiente = beta1, 
+      cressie = sum(obj$n * (obj$v/(beta0 + beta1 * obj$u)- 1)^2)
+    ))
+  }
   # Unión de als funciones a optiimizar.
   fn_optim <- function(params) {
     resultados <- variog_est(obj = obj, 
@@ -288,6 +299,7 @@ ajuste_evap = matrix(ajuste_evap, ncol = 2, byrow = T)
 evap = cbind(evap, ajuste_evap)
 colnames(evap)[7:8] = c('silla_est', 'rango_est')
 
+evap_lineal = estimar_mco(obj = variog_emp$EVAPORACIÓN.MENSUAL, modelo = 'lineal')
 
 h = 1:6000 * 100
 estimaciones = c()
@@ -303,16 +315,20 @@ for (i in 1:4){
 estimaciones = as.data.frame(estimaciones)
 colnames(estimaciones) = stringr::str_to_title(evap$call)
 
+estimaciones = cbind(estimaciones,
+                     lineal = evap_lineal$pepita + evap_lineal$pendiente * h)
 
 # jpeg('plots/ajuste/evap (MCO).jpg', width = 1500, height = 1300, quality = 80, res = 150)
-plot(variog_emp$EVAPORACIÓN.MENSUAL, main = 'evap total mensual\nen la península de Yucatán', 
+plot(variog_emp$EVAPORACIÓN.MENSUAL, main = 'Evaporación total mensual\nen la península de Yucatán', 
      pch = 16, type = 'n', ylab = 'Semivarianza', xlab = 'Distancia', cex.main = 1.5)
-colores = RColorBrewer::brewer.pal(n = 4, name = 'Set1')
-for (i in 1:4){
+colores = RColorBrewer::brewer.pal(n = 5, name = 'Set1')
+for (i in 1:5){
   lines(x = h, y = estimaciones[,i], col = colores[i], lty = 'solid', lwd = 1.5)
 }
 points(x = variog_emp$EVAPORACIÓN.MENSUAL$u, y = variog_emp$EVAPORACIÓN.MENSUAL$v, pch = 21, col = 'black', bg = 'white')
-legend('bottomright', legend = colnames(estimaciones), bty = 'n', lty = 'solid', col = colores, lwd = 2, inset = c(0.01,0.01))
+legend('bottomright', legend = c(colnames(estimaciones), 'lineal'), bty = 'n', lty = 'solid', col = colores, lwd = 2, inset = c(0.01,0.01))
 # dev.off()
+
+resultados = rbind(resultados, lineal = c(evap_lineal$pepita, NA, NA, NA, evap_lineal$cressie))
 
 write.table(x = resultados, file = 'data/ajuste/evaporación (MCO).txt')
